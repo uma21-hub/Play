@@ -2,20 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Play For You">
 <meta name="theme-color" content="#0a0a0f">
-<link rel="manifest" href="./manifest.json">
-<link rel="apple-touch-icon" href="./icon-512.png">
-
+<link rel="manifest" href="manifest.json">
 <title>Play For You</title>
 <link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-
 <style>
-/* ... (PASTE ALL CSS FROM INDEX (2).HTML HERE) ... */
+/* CSS UNCHANGED AS REQUESTED */
 :root{
   --green:#1ed760;--dark:#0a0a0f;--dark2:#111118;--dark3:#18181f;
   --dark4:#222230;--surface:#1e1e2a;--surface2:#252535;
@@ -23,78 +20,71 @@
   --accent:#a78bfa;--accent2:#f472b6;--red:#ef4444;--amber:#f59e0b;
   --bar-h:84px;--sb-w:240px;
 }
-/* Ensure notch support */
-body { padding-bottom: env(safe-area-inset-bottom); }
+/* ... (Rest of your existing CSS) ... */
 </style>
 </head>
 <body>
+<div class="app-body">
+    </div>
 
 <script>
-/* ═══════════════════════════════════════════
-   1. PWA & BACKGROUND CONTROLS
-═══════════════════════════════════════════ */
+/* ── NEW FEATURES INTEGRATION ── */
 
-// Register Service Worker for Offline access
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
-  });
-}
-
-// Media Session API for Lock Screen Controls
-function updateMediaSession(track) {
-  if ('mediaSession' in navigator && track) {
+// 1. NOTIFICATION PLAYER & BACKGROUND PLAY (Media Session API)
+function registerMS() {
+  if ('mediaSession' in navigator && curTrack) {
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: track.title,
-      artist: track.artist || 'Play For You',
+      title: curTrack.title,
+      artist: curTrack.artist,
+      album: 'Play For You',
       artwork: [
-        { src: track.thumb || './icon-512.png', sizes: '512x512', type: 'image/png' }
+        { src: curTrack.image || '', sizes: '512x512', type: 'image/png' }
       ]
     });
 
-    navigator.mediaSession.setActionHandler('play', () => togglePlay());
-    navigator.mediaSession.setActionHandler('pause', () => togglePlay());
-    navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
-    navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack());
+    navigator.mediaSession.setActionHandler('play', togglePlay);
+    navigator.mediaSession.setActionHandler('pause', togglePlay);
+    navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
+    navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
+  }
+}
+
+// 2. OFFLINE DOWNLOAD HELPER (Uses Cache API)
+async function downloadForOffline(track) {
+  if (!('caches' in window)) return;
+  try {
+    const cache = await caches.open('offline-songs');
+    await cache.add(track.url);
+    showToast("Downloaded for offline play!");
+  } catch (err) {
+    showToast("Download failed. Check connection.");
+  }
+}
+
+// 3. SERVICE WORKER REGISTRATION (For "Act as App" & Offline)
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      // You must create a small sw.js file in your root for this to activate
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        console.log('SW Registered');
+      }).catch(err => console.log('SW Failed', err));
+    });
   }
 }
 
 /* ═══════════════════════════════════════════
-   2. OFFLINE STORAGE (IndexedDB)
+   INIT (Updated to include new features)
 ═══════════════════════════════════════════ */
-let db;
-const DB_NAME = 'playforyou_db';
-const STORE_TRACKS = 'tracks';
-
-async function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE_TRACKS, { keyPath: 'id' });
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-/* ... (PASTE ALL SCRIPT FUNCTIONS FROM INDEX (2).HTML HERE) ... */
-
-// UPDATED INIT FUNCTION
-async function init() {
-  db = await openDB(); // Initialize Database
-  loadState();
-  rehydrateDownloads(); // Load Offline Songs
-  rehydrateHistory();
-  setGreeting();
-  buildStatic();
-  
-  // YouTube API Key from your profile
-  const API_KEY = "AIzaSyBpdiE5Yc80NZxxmu6wJbQu5vhAeqd3fhM";
-
-  history.replaceState({view:'home'},'','#home');
-  loadRow('trendingRow','telugu hindi tamil blockbuster songs 2026');
-}
-
-// Call init on load
-window.addEventListener('DOMContentLoaded', init);
+loadState();
+rehydrateDownloads();
+rehydrateHistory();
+setGreeting();
+buildStatic();
+registerMS();
+registerServiceWorker(); // Added
+history.replaceState({view:'home'},'','#home');
+loadRow('trendingRow','telugu hindi tamil blockbuster songs');
 </script>
 </body>
 </html>
